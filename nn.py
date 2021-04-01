@@ -7,14 +7,25 @@ from torch.autograd import Variable
 from torchvision import datasets, transforms
 
 
-class logistic(nn.Module):
+class net(nn.Module):
     def __init__(self):
-        super(logistic, self).__init__()
-        self.logstic = nn.Linear(28 * 28, 10)
+        super(net, self).__init__()
+        self.layer1 = nn.Sequential(
+            nn.Linear(28 * 28, 300),
+            nn.BatchNorm1d(300),
+            nn.ReLU(True))
+        self.layer2 = nn.Sequential(
+            nn.Linear(300, 100),
+            nn.BatchNorm1d(100),
+            nn.ReLU(True))
+        self.layer3 = nn.Sequential(
+            nn.Linear(100, 10))
 
     def forward(self, x):
-        out = self.logstic(x)
-        return out
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        return x
 
 
 def train(model, device, train_loader, optimizer, epoch):
@@ -87,7 +98,7 @@ if __name__ == '__main__':
         ])),
         batch_size=test_batch_size, shuffle=True, **kwargs)
 
-    model = logistic().to(device)
+    model = net().to(device)
     optimizer = optim.SGD(model.parameters(), lr=lr,
                           momentum=momentum)
 

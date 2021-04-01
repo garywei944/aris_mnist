@@ -3,30 +3,39 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.autograd import Variable
 from torchvision import datasets, transforms
 
 
-class logistic(nn.Module):
+class CNN(nn.Module):
     def __init__(self):
-        super(logistic, self).__init__()
-        self.logstic = nn.Linear(28 * 28, 10)
+        super(CNN, self).__init__()
+        self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
+        self.conv2 = nn.Conv2d(10, 20, kernel_size=5)
+        self.conv2_drop = nn.Dropout2d()
+        self.layer1 = nn.Sequential(
+            nn.Linear(320, 100),
+            nn.BatchNorm1d(100),
+            nn.ReLU(True))
+        self.layer2 = nn.Sequential(
+            nn.Linear(100, 10))
 
     def forward(self, x):
-        out = self.logstic(x)
-        return out
+        x = F.relu(F.max_pool2d(self.conv1(x), 2))
+        x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
+        x = x.view(-1, 320)
+        x = self.layer1(x)
+        x = F.dropout(x, training=self.training)
+        x = self.layer2(x)
+        return F.log_softmax(x, dim=1)
 
 
 def train(model, device, train_loader, optimizer, epoch):
     model.train()
-    criterion = nn.CrossEntropyLoss()
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
-        data = Variable(data.view(-1, 28 * 28))
-        target = Variable(target)
         optimizer.zero_grad()
         output = model(data)
-        loss = criterion(output, target)
+        loss = F.nll_loss(output, target)
         loss.backward()
         optimizer.step()
         if batch_idx % log_interval == 0:
@@ -36,15 +45,12 @@ def train(model, device, train_loader, optimizer, epoch):
 
 
 def test(model, device, test_loader):
-    # criterion = nn.CrossEntropyLoss()
     model.eval()
     test_loss = 0
     correct = 0
     with torch.no_grad():
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
-            data = Variable(data.view(-1, 28 * 28))
-            target = Variable(target)
             output = model(data)
             # get the index of the max log-probability
             pred = output.max(1, keepdim=True)[1]
@@ -87,7 +93,7 @@ if __name__ == '__main__':
         ])),
         batch_size=test_batch_size, shuffle=True, **kwargs)
 
-    model = logistic().to(device)
+    model = CNN().to(device)
     optimizer = optim.SGD(model.parameters(), lr=lr,
                           momentum=momentum)
 
